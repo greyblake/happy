@@ -10,3 +10,4 @@ edition = "2018"
 iced = { version = "0.2", features = ["tokio_old"] }
 iced_native = "*"
 reqwest = "0.10.2"
+derive_more = "*"

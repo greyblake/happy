@@ -3,24 +3,73 @@ use iced::{
     Row, Column, Text, Settings, Application,
     Container, Length, TextInput,
     text_input, button, Subscription,
-    keyboard
+    keyboard,
+    pick_list, PickList,
+    Rule,
+    scrollable, Scrollable,
 };
 use iced_native::{subscription, Event};
+use derive_more::Display;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+enum Method {
+    GET,
+    POST,
+    PATCH,
+    DELETE
+}
+
+impl Method {
+    const ALL: [Method; 4] = [
+        Method::GET,
+        Method::POST,
+        Method::PATCH,
+        Method::DELETE
+    ];
+}
+
+impl Default for Method {
+    fn default() -> Self {
+        Method::GET
+    }
+}
+
+#[derive(Debug)]
+enum ResponseState {
+    New,
+    Loading,
+    Error(()),
+    Received(String)
+}
+
+impl Default for ResponseState {
+    fn default() -> Self {
+        ResponseState::New
+    }
+}
+
 
 #[derive(Debug, Clone)]
 enum Message {
     UrlChanged(String),
     Send,
-    ResponseReceived(Result<String, ()>)
+    ResponseReceived(Result<String, ()>),
+    MethodPicked(Method),
 }
+
 
 #[derive(Debug, Default)]
 struct App {
     url_input_state: text_input::State,
-    url_value: String,
+    url: String,
 
     send_button_state: button::State,
-    response_result: Option<Result<String, ()>>
+    response_state: ResponseState,
+
+    method_state: pick_list::State<Method>,
+    method: Method,
+
+    scrollable_state: scrollable::State,
 }
 
 impl Application for App {
@@ -29,7 +78,8 @@ impl Application for App {
     type Flags = ();
 
     fn new(_flags: ()) -> (App, Command<Self::Message>) {
-        let app = App::default();
+        let mut app = App::default();
+        app.url = "https://httpbin.org/delay/1".to_string();
         (app, Command::none())
     }
 
@@ -38,6 +88,13 @@ impl Application for App {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
+        let method_picker = PickList::new(
+            &mut self.method_state,
+            &Method::ALL[..],
+            Some(self.method),
+            Message::MethodPicked
+        );
+
         let col1 = Column::new()
             .width(Length::Fill)
             .height(Length::Fill)
@@ -46,12 +103,13 @@ impl Application for App {
                 .push(Text::new("Request").size(25))
             .push(
                 Row::new().padding(10)
-                    .push(Text::new("GET"))
+                    //.push(Text::new("GET"))
+                    .push(method_picker)
                     .push(
                         TextInput::new(
                             &mut self.url_input_state,
                             "URL",
-                            &mut self.url_value,
+                            &mut self.url,
                             Message::UrlChanged
                         ).padding(10).size(16)
                     )
@@ -63,14 +121,12 @@ impl Application for App {
                     )
             );
 
-        let resp: String = match self.response_result {
-            None => "Enter URL and send your first request.".to_string(),
-            Some(ref res) => {
-                match res {
-                    Err(_) => "Error happened".to_string(),
-                    Ok(body) => body.clone(),
-                }
-            }
+
+        let resp_text = match self.response_state {
+            ResponseState::New => "Enter URL and send your first request.".to_string(),
+            ResponseState::Loading => "...LOADING...".to_string(),
+            ResponseState::Error(_) => "Error happened".to_string(),
+            ResponseState::Received(ref body) => body.clone()
         };
 
         let col2 = Column::new()
@@ -81,10 +137,14 @@ impl Application for App {
                     .push(Text::new("Response").size(25))
             .push(
                 Row::new().padding(10)
-                    .push(Text::new(resp))
+                    .push(
+                        Scrollable::new(&mut self.scrollable_state)
+                            .push(Text::new(resp_text))
+                    )
             );
         let row = Row::new()
             .push(col1)
+            .push(Rule::vertical(30))
             .push(col2);
 
 
@@ -100,15 +160,22 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::UrlChanged(val) => {
-                self.url_value = val;
+                self.url = val;
                 Command::none()
             }
             Message::Send => {
-                println!("Send GET {}", self.url_value);
-                Command::perform(get_body(self.url_value.clone()), Message::ResponseReceived)
+                self.response_state = ResponseState::Loading;
+                Command::perform(get_body(self.url.clone()), Message::ResponseReceived)
             },
-            Message::ResponseReceived(res) => {
-                self.response_result = Some(res);
+            Message::ResponseReceived(result) => {
+                self.response_state = match result {
+                    Ok(resp) => ResponseState::Received(resp),
+                    Err(_) => ResponseState::Error(())
+                };
+                Command::none()
+            }
+            Message::MethodPicked(method) => {
+                self.method = method;
                 Command::none()
             }
         }
