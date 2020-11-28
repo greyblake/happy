@@ -2,8 +2,10 @@ use iced::{
     executor, Command, Element, Button,
     Row, Column, Text, Settings, Application,
     Container, Length, TextInput,
-    text_input, button,
+    text_input, button, Subscription,
+    keyboard
 };
+use iced_native::{subscription, Event};
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -45,14 +47,17 @@ impl Application for App {
             .push(
                 Row::new().padding(10)
                     .push(Text::new("GET"))
-                    .push(TextInput::new(
+                    .push(
+                        TextInput::new(
                             &mut self.url_input_state,
                             "URL",
                             &mut self.url_value,
-                            Message::UrlChanged))
+                            Message::UrlChanged
+                        ).padding(10).size(16)
+                    )
                     .push(Button::new(
                             &mut self.send_button_state,
-                            Text::new("SEND")
+                            Text::new("Send")
                         ).on_press(Message::Send)
                         .style(style::Button::Primary)
                     )
@@ -108,6 +113,18 @@ impl Application for App {
             }
         }
     }
+
+    fn subscription(&self) -> Subscription<Message> {
+        use keyboard::Event::KeyPressed;
+        use keyboard::KeyCode;
+
+        subscription::events_with(|event, _status| {
+            match event {
+                Event::Keyboard(KeyPressed { key_code: KeyCode::Enter, .. }) => Some(Message::Send),
+                _ => None
+            }
+        })
+    }
 }
 
 async fn get_body(url: String) -> Result<String, ()> {
@@ -120,7 +137,7 @@ async fn get_body(url: String) -> Result<String, ()> {
 }
 
 fn main() {
-    App::run(Settings::default());
+    App::run(Settings::default()).unwrap()
 }
 
 mod style {
@@ -128,7 +145,6 @@ mod style {
 
     pub enum Button {
         Primary,
-        Secondary,
     }
 
     impl button::StyleSheet for Button {
@@ -136,9 +152,8 @@ mod style {
             button::Style {
                 background: Some(Background::Color(match self {
                     Button::Primary => Color::from_rgb(0.11, 0.42, 0.87),
-                    Button::Secondary => Color::from_rgb(0.5, 0.5, 0.5),
                 })),
-                border_radius: 12.0,
+                border_radius: 3.0,
                 shadow_offset: Vector::new(1.0, 1.0),
                 text_color: Color::from_rgb8(0xEE, 0xEE, 0xEE),
                 ..button::Style::default()

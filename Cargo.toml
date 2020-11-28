@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 iced = { version = "0.2", features = ["tokio_old"] }
+iced_native = "*"
 reqwest = "0.10.2"
-# tokio = { version = "0.3", features = ["full"] }
