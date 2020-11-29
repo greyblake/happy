@@ -1,3 +1,5 @@
+mod solarized;
+
 use iced::{
     executor, Command, Element, Button,
     Row, Column, Text, Settings, Application,
@@ -144,13 +146,14 @@ impl Application for App {
             );
         let row = Row::new()
             .push(col1)
-            .push(Rule::vertical(30))
+            .push(Rule::vertical(20))
             .push(col2);
 
 
         let container = Container::new(row)
             .height(Length::Fill)
-            .width(Length::Fill);
+            .width(Length::Fill)
+            .style(style::ContainerStyle::Main);
 
         let el: Element<Self::Message> = container.into();
         // el.explain(iced::Color::BLACK)
@@ -208,7 +211,11 @@ fn main() {
 }
 
 mod style {
-    use iced::{button, Background, Color, Vector};
+    use iced::{
+        button, Background, Color, Vector,
+        container,
+    };
+    use crate::solarized::*;
 
     pub enum Button {
         Primary,
@@ -217,12 +224,10 @@ mod style {
     impl button::StyleSheet for Button {
         fn active(&self) -> button::Style {
             button::Style {
-                background: Some(Background::Color(match self {
-                    Button::Primary => Color::from_rgb(0.11, 0.42, 0.87),
-                })),
-                border_radius: 3.0,
+                background: Some(Background::Color(BASE01)),
+                border_radius: 1.0,
                 shadow_offset: Vector::new(1.0, 1.0),
-                text_color: Color::from_rgb8(0xEE, 0xEE, 0xEE),
+                text_color: BASE2,
                 ..button::Style::default()
             }
         }
@@ -235,4 +240,21 @@ mod style {
             }
         }
     }
+
+    pub enum ContainerStyle {
+        Main
+    }
+
+    impl container::StyleSheet for ContainerStyle {
+        fn style(&self) -> container::Style {
+            container::Style {
+                text_color: Some(BASE1),
+                background: Some(Background::Color(BASE03)),
+                border_radius: 0.0,
+                border_width: 0.0,
+                border_color: Color::from_rgb8(0x00, 0x00, 0x00)
+            }
+        }
+    }
+
 }
